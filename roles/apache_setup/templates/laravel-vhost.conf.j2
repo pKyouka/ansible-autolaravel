@@ -1,0 +1,41 @@
+{% if apache_port is iterable and apache_port is not string %}
+{% for port in apache_port %}
+<VirtualHost *:{{ port }}>
+    ServerName {{ server_name }}
+    ServerAlias {{ server_alias }}
+    DocumentRoot {{ deploy_base_path }}/{{ project_name }}/public
+
+    <Directory {{ deploy_base_path }}/{{ project_name }}/public>
+        Options -Indexes +FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/{{ project_name }}_error.log
+    CustomLog ${APACHE_LOG_DIR}/{{ project_name }}_access.log combined
+
+    <FilesMatch \.php$>
+        SetHandler "proxy:unix:/var/run/php/php{{ php_version }}-fpm.sock|fcgi://localhost"
+    </FilesMatch>
+</VirtualHost>
+{% endfor %}
+{% else %}
+<VirtualHost *:{{ apache_port }}>
+    ServerName {{ server_name }}
+    ServerAlias {{ server_alias }}
+    DocumentRoot {{ deploy_base_path }}/{{ project_name }}/public
+
+    <Directory {{ deploy_base_path }}/{{ project_name }}/public>
+        Options -Indexes +FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/{{ project_name }}_error.log
+    CustomLog ${APACHE_LOG_DIR}/{{ project_name }}_access.log combined
+
+    <FilesMatch \.php$>
+        SetHandler "proxy:unix:/var/run/php/php{{ php_version }}-fpm.sock|fcgi://localhost"
+    </FilesMatch>
+</VirtualHost>
+{% endif %}

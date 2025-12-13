@@ -1,0 +1,51 @@
+---
+- name: Cek apakah database sudah ada
+  shell: mysql -u root -p{{ mysql_root_password }} -e "SHOW DATABASES LIKE '{{ db_name }}'"
+  register: db_exists
+  changed_when: false
+  ignore_errors: yes
+  become: yes
+
+- name: Buat database jika belum ada
+  mysql_db:
+    name: "{{ db_name }}"
+    state: present
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+  become: yes
+  when: db_exists.stdout == ""
+
+- name: Cek apakah user database sudah ada
+  shell: mysql -u root -p{{ mysql_root_password }} -e "SELECT User FROM mysql.user WHERE User='{{ db_user }}'"
+  register: user_exists
+  changed_when: false
+  ignore_errors: yes
+  become: yes
+
+- name: Buat user database jika belum ada
+  mysql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    priv: "{{ db_name }}.*:ALL"
+    host: "{{ db_host }}"
+    state: present
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+  become: yes
+  when: user_exists.stdout == ""
+
+- name: Grant all privileges ke user
+  mysql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    priv: "{{ db_name }}.*:ALL"
+    host: "{{ db_host }}"
+    state: present
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    append_privs: yes
+  become: yes
+
+- name: Flush privileges
+  shell: mysql -u root -p{{ mysql_root_password }} -e "FLUSH PRIVILEGES"
+  become: yes

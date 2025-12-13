@@ -1,0 +1,41 @@
+# Konfigurasi Deployment Laravel
+# Edit file ini sesuai kebutuhan Anda
+
+# Path ke project Laravel (bisa .zip atau folder)
+# Contoh: /path/to/project.zip atau /path/to/laravel-folder
+project_source: ""
+
+# Nama project (akan digunakan untuk nama folder di server)
+project_name: "laravel-app"
+
+# Direktori tujuan deployment (tanpa trailing slash)
+deploy_base_path: "/var/www/html"
+
+# Domain/Server Name untuk Apache
+server_name: "localhost"
+server_alias: "www.localhost"
+
+# Port untuk Apache (bisa single port atau list)
+# Contoh single: apache_port: 80
+# Contoh multi: apache_port: [80, 8080, 8081]
+apache_port: 80
+
+# Konfigurasi Database
+db_name: "laravel_db"
+db_user: "laravel_user"
+db_password: "laravel_password"
+db_host: "localhost"
+
+# MySQL root password (untuk membuat database dan user)
+mysql_root_password: "root"
+
+# PHP version (sesuaikan dengan yang terinstall)
+php_version: "8.1"
+
+# Apache user dan group
+apache_user: "www-data"
+apache_group: "www-data"
+
+# Laravel environment
+app_env: "production"
+app_debug: "false"

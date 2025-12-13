@@ -1,0 +1,77 @@
+---
+- name: Cek apakah project_source adalah file zip
+  stat:
+    path: "{{ project_source }}"
+  register: source_stat
+  when: project_source != ""
+
+- name: Tentukan apakah source adalah zip file
+  set_fact:
+    is_zip_file: "{{ source_stat.stat.exists and project_source.endswith('.zip') }}"
+  when: project_source != ""
+
+- name: Buat direktori temporary untuk extract
+  file:
+    path: "/tmp/laravel_deploy_temp"
+    state: directory
+    mode: '0755'
+  when: project_source != "" and is_zip_file
+
+- name: Extract file zip ke temporary directory
+  unarchive:
+    src: "{{ project_source }}"
+    dest: "/tmp/laravel_deploy_temp"
+    remote_src: no
+  when: project_source != "" and is_zip_file
+
+- name: Tentukan source directory untuk copy
+  set_fact:
+    actual_source: "{{ '/tmp/laravel_deploy_temp' if is_zip_file else project_source }}"
+  when: project_source != ""
+
+- name: Buat direktori project di destination
+  file:
+    path: "{{ deploy_base_path }}/{{ project_name }}"
+    state: directory
+    mode: '0755'
+  become: yes
+
+- name: Copy project files ke destination (dari zip)
+  synchronize:
+    src: "{{ actual_source }}/"
+    dest: "{{ deploy_base_path }}/{{ project_name }}/"
+    delete: no
+    recursive: yes
+  become: yes
+  when: project_source != "" and is_zip_file
+
+- name: Copy project files ke destination (dari folder)
+  synchronize:
+    src: "{{ actual_source }}/"
+    dest: "{{ deploy_base_path }}/{{ project_name }}/"
+    delete: no
+    recursive: yes
+  become: yes
+  when: project_source != "" and not is_zip_file
+
+- name: Set ownership untuk project directory
+  file:
+    path: "{{ deploy_base_path }}/{{ project_name }}"
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+    recurse: yes
+  become: yes
+
+- name: Set chmod 755 untuk semua direktori
+  shell: find {{ deploy_base_path }}/{{ project_name }} -type d -exec chmod 755 {} \;
+  become: yes
+
+- name: Set chmod 644 untuk semua file
+  shell: find {{ deploy_base_path }}/{{ project_name }} -type f -exec chmod 644 {} \;
+  become: yes
+
+- name: Cleanup temporary directory
+  file:
+    path: "/tmp/laravel_deploy_temp"
+    state: absent
+  when: project_source != "" and is_zip_file

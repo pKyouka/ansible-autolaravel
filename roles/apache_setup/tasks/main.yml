@@ -1,0 +1,75 @@
+---
+- name: Pastikan port Apache di-listen
+  lineinfile:
+    path: /etc/apache2/ports.conf
+    line: "Listen {{ item }}"
+    state: present
+  become: yes
+  loop: "{{ apache_port if apache_port is iterable and apache_port is not string else [apache_port] }}"
+  notify: restart apache
+
+- name: Buat virtual host configuration dari template
+  template:
+    src: laravel-vhost.conf.j2
+    dest: "/etc/apache2/sites-available/{{ project_name }}.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+
+- name: Enable Apache rewrite module
+  apache2_module:
+    name: rewrite
+    state: present
+  become: yes
+  notify: restart apache
+
+- name: Enable Apache proxy_fcgi module
+  apache2_module:
+    name: proxy_fcgi
+    state: present
+  become: yes
+  notify: restart apache
+
+- name: Disable default site jika ada
+  command: a2dissite 000-default.conf
+  become: yes
+  ignore_errors: yes
+  notify: restart apache
+
+- name: Enable Laravel site
+  command: "a2ensite {{ project_name }}.conf"
+  become: yes
+  notify: restart apache
+
+- name: Set proper ownership untuk public directory
+  file:
+    path: "{{ deploy_base_path }}/{{ project_name }}/public"
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+    recurse: yes
+  become: yes
+
+- name: Set chmod 755 untuk public directory
+  file:
+    path: "{{ deploy_base_path }}/{{ project_name }}/public"
+    mode: '0755'
+    state: directory
+  become: yes
+
+- name: Set chmod 644 untuk file di public directory
+  shell: find {{ deploy_base_path }}/{{ project_name }}/public -type f -exec chmod 644 {} \;
+  become: yes
+
+- name: Set chmod 755 untuk index.php agar executable
+  file:
+    path: "{{ deploy_base_path }}/{{ project_name }}/public/index.php"
+    mode: '0755'
+  become: yes
+  ignore_errors: yes
+
+- name: Restart Apache untuk apply changes
+  service:
+    name: apache2
+    state: restarted
+  become: yes

@@ -1,0 +1,52 @@
+---
+- name: Deploy Laravel Application
+  hosts: laravel_servers
+  gather_facts: yes
+  vars_files:
+    - vars.yml
+
+  pre_tasks:
+    - name: Validasi project_source tidak kosong
+      fail:
+        msg: "project_source harus diisi di vars.yml atau via command line dengan -e project_source=/path/to/project"
+      when: project_source == "" or project_source is not defined
+
+    - name: Tampilkan informasi deployment
+      debug:
+        msg:
+          - "========================================="
+          - "Laravel Auto Deployment"
+          - "========================================="
+          - "Project: {{ project_name }}"
+          - "Source: {{ project_source }}"
+          - "Destination: {{ deploy_base_path }}/{{ project_name }}"
+          - "Database: {{ db_name }}"
+          - "Server: {{ server_name }}"
+          - "========================================="
+
+  roles:
+    - role: mysql_setup
+      tags: ['mysql', 'database']
+
+    - role: project_setup
+      tags: ['project', 'copy']
+
+    - role: laravel_setup
+      tags: ['laravel', 'composer']
+
+    - role: apache_setup
+      tags: ['apache', 'webserver']
+
+    - role: final_permissions
+      tags: ['permissions', 'chmod', 'chown']
+
+  post_tasks:
+    - name: Deployment selesai
+      debug:
+        msg:
+          - "========================================="
+          - "Deployment Berhasil!"
+          - "========================================="
+          - "Aplikasi dapat diakses di: http://{{ server_name }}"
+          - "Path: {{ deploy_base_path }}/{{ project_name }}"
+          - "========================================="

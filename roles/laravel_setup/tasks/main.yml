@@ -1,0 +1,127 @@
+---
+- name: Cek apakah file .env sudah ada
+  stat:
+    path: "{{ deploy_base_path }}/{{ project_name }}/.env"
+  register: env_file
+
+- name: Copy .env.example ke .env jika belum ada
+  copy:
+    src: "{{ deploy_base_path }}/{{ project_name }}/.env.example"
+    dest: "{{ deploy_base_path }}/{{ project_name }}/.env"
+    remote_src: yes
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+    mode: '0644'
+  become: yes
+  when: not env_file.stat.exists
+
+- name: Update .env dengan konfigurasi database
+  lineinfile:
+    path: "{{ deploy_base_path }}/{{ project_name }}/.env"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    create: yes
+  become: yes
+  loop:
+    - { regexp: '^DB_CONNECTION=', line: 'DB_CONNECTION=mysql' }
+    - { regexp: '^DB_HOST=', line: 'DB_HOST={{ db_host }}' }
+    - { regexp: '^DB_PORT=', line: 'DB_PORT=3306' }
+    - { regexp: '^DB_DATABASE=', line: 'DB_DATABASE={{ db_name }}' }
+    - { regexp: '^DB_USERNAME=', line: 'DB_USERNAME={{ db_user }}' }
+    - { regexp: '^DB_PASSWORD=', line: 'DB_PASSWORD={{ db_password }}' }
+    - { regexp: '^APP_ENV=', line: 'APP_ENV={{ app_env }}' }
+    - { regexp: '^APP_DEBUG=', line: 'APP_DEBUG={{ app_debug }}' }
+    - { regexp: '^APP_URL=', line: 'APP_URL=http://{{ server_name }}' }
+
+- name: Install composer dependencies
+  composer:
+    command: install
+    working_dir: "{{ deploy_base_path }}/{{ project_name }}"
+    no_dev: "{{ 'yes' if app_env == 'production' else 'no' }}"
+  become: yes
+  become_user: "{{ apache_user }}"
+
+- name: Generate application key
+  shell: php artisan key:generate --force
+  args:
+    chdir: "{{ deploy_base_path }}/{{ project_name }}"
+  become: yes
+  become_user: "{{ apache_user }}"
+
+- name: Run database migrations
+  shell: php artisan migrate --force
+  args:
+    chdir: "{{ deploy_base_path }}/{{ project_name }}"
+  become: yes
+  become_user: "{{ apache_user }}"
+  ignore_errors: yes
+
+- name: Clear dan optimize cache
+  shell: |
+    php artisan config:clear
+    php artisan cache:clear
+    php artisan route:clear
+    php artisan view:clear
+    php artisan config:cache
+    php artisan route:cache
+    php artisan view:cache
+  args:
+    chdir: "{{ deploy_base_path }}/{{ project_name }}"
+  become: yes
+  become_user: "{{ apache_user }}"
+
+- name: Set proper permissions untuk storage dan bootstrap/cache
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+    mode: '0775'
+    recurse: yes
+  become: yes
+  loop:
+    - "{{ deploy_base_path }}/{{ project_name }}/storage"
+    - "{{ deploy_base_path }}/{{ project_name }}/bootstrap/cache"
+
+- name: Set chmod 775 untuk semua direktori di storage
+  shell: find {{ deploy_base_path }}/{{ project_name }}/storage -type d -exec chmod 775 {} \;
+  become: yes
+
+- name: Set chmod 664 untuk semua file di storage
+  shell: find {{ deploy_base_path }}/{{ project_name }}/storage -type f -exec chmod 664 {} \;
+  become: yes
+
+- name: Set chmod 775 untuk bootstrap/cache directory
+  shell: find {{ deploy_base_path }}/{{ project_name }}/bootstrap/cache -type d -exec chmod 775 {} \;
+  become: yes
+
+- name: Set chmod 664 untuk file di bootstrap/cache
+  shell: find {{ deploy_base_path }}/{{ project_name }}/bootstrap/cache -type f -exec chmod 664 {} \;
+  become: yes
+
+- name: Set chmod 644 untuk file .env
+  file:
+    path: "{{ deploy_base_path }}/{{ project_name }}/.env"
+    mode: '0644'
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+  become: yes
+
+- name: Set ownership dan permission untuk vendor directory
+  file:
+    path: "{{ deploy_base_path }}/{{ project_name }}/vendor"
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+    mode: '0755'
+    recurse: yes
+    state: directory
+  become: yes
+  ignore_errors: yes
+
+- name: Create symbolic link untuk storage (jika belum ada)
+  shell: php artisan storage:link
+  args:
+    chdir: "{{ deploy_base_path }}/{{ project_name }}"
+  become: yes
+  become_user: "{{ apache_user }}"
+  ignore_errors: yes

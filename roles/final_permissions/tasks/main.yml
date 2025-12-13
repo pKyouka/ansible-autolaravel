@@ -1,0 +1,65 @@
+---
+# Role untuk set final permissions setelah semua setup selesai
+- name: Pastikan ownership semua file project benar
+  file:
+    path: "{{ deploy_base_path }}/{{ project_name }}"
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+    recurse: yes
+  become: yes
+
+- name: Set permission 755 untuk semua direktori
+  shell: find {{ deploy_base_path }}/{{ project_name }} -type d -exec chmod 755 {} \;
+  become: yes
+
+- name: Set permission 644 untuk semua file
+  shell: find {{ deploy_base_path }}/{{ project_name }} -type f -exec chmod 644 {} \;
+  become: yes
+
+- name: Set permission 775 untuk storage directory (write access)
+  shell: find {{ deploy_base_path }}/{{ project_name }}/storage -type d -exec chmod 775 {} \;
+  become: yes
+
+- name: Set permission 664 untuk file di storage (write access)
+  shell: find {{ deploy_base_path }}/{{ project_name }}/storage -type f -exec chmod 664 {} \;
+  become: yes
+
+- name: Set permission 775 untuk bootstrap/cache directory
+  shell: find {{ deploy_base_path }}/{{ project_name }}/bootstrap/cache -type d -exec chmod 775 {} \;
+  become: yes
+
+- name: Set permission 664 untuk file di bootstrap/cache
+  shell: find {{ deploy_base_path }}/{{ project_name }}/bootstrap/cache -type f -exec chmod 664 {} \;
+  become: yes
+
+- name: Set permission khusus untuk artisan (executable)
+  file:
+    path: "{{ deploy_base_path }}/{{ project_name }}/artisan"
+    mode: '0755'
+  become: yes
+  ignore_errors: yes
+
+- name: Set permission untuk .env file (sensitive file)
+  file:
+    path: "{{ deploy_base_path }}/{{ project_name }}/.env"
+    mode: '0640'
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+  become: yes
+
+- name: Tampilkan summary permissions
+  debug:
+    msg:
+      - "========================================="
+      - "Permission Summary:"
+      - "========================================="
+      - "Semua direktori: 755 (rwxr-xr-x)"
+      - "Semua file: 644 (rw-r--r--)"
+      - "storage/: 775 (rwxrwxr-x)"
+      - "storage/* files: 664 (rw-rw-r--)"
+      - "bootstrap/cache/: 775 (rwxrwxr-x)"
+      - "bootstrap/cache/* files: 664 (rw-rw-r--)"
+      - ".env: 640 (rw-r-----)"
+      - "artisan: 755 (rwxr-xr-x)"
+      - "Owner: {{ apache_user }}:{{ apache_group }}"
+      - "========================================="
