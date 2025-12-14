@@ -1,12 +1,37 @@
 ---
-- name: Pastikan port Apache di-listen
+- name: Backup ports.conf sebelum modifikasi
+  copy:
+    src: /etc/apache2/ports.conf
+    dest: /etc/apache2/ports.conf.backup
+    remote_src: yes
+    force: no
+  become: yes
+  ignore_errors: yes
+
+- name: Cek port yang sudah ada di ports.conf
+  shell: grep -E "^Listen " /etc/apache2/ports.conf || true
+  register: existing_ports
+  changed_when: false
+  become: yes
+
+- name: Pastikan port Apache di-listen di /etc/apache2/ports.conf
   lineinfile:
     path: /etc/apache2/ports.conf
     line: "Listen {{ item }}"
     state: present
+    regexp: "^Listen {{ item }}$"
+    insertafter: "^Listen "
   become: yes
   loop: "{{ apache_port if apache_port is iterable and apache_port is not string else [apache_port] }}"
   notify: restart apache
+
+- name: Tampilkan konfigurasi port yang ditambahkan
+  debug:
+    msg:
+      - "========================================="
+      - "Port Configuration di /etc/apache2/ports.conf:"
+      - "{{ apache_port if apache_port is iterable and apache_port is not string else [apache_port] }}"
+      - "========================================="
 
 - name: Buat virtual host configuration dari template
   template:
