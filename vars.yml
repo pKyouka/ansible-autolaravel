@@ -1,9 +1,17 @@
 # Konfigurasi Deployment Laravel
 # Edit file ini sesuai kebutuhan Anda
 
-# Path ke project Laravel (bisa .zip atau folder)
-# Contoh: /path/to/project.zip atau /path/to/laravel-folder
+# Path ke project Laravel (bisa .zip, folder, atau Git URL)
+# Contoh folder: /path/to/laravel-folder
+# Contoh zip: /path/to/project.zip
+# Contoh git: https://github.com/username/laravel-app.git
 project_source: ""
+
+# Git branch (hanya untuk git clone, default: main)
+git_branch: "main"
+
+# Force fresh clone dari git (hapus folder lama)
+git_force_clone: false
 
 # Nama project (akan digunakan untuk nama folder di server)
 project_name: "laravel-app"

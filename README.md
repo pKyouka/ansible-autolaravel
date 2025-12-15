@@ -4,7 +4,8 @@ Sistem deployment otomatis untuk Laravel menggunakan Ansible. Cukup berikan path
 
 ## 🚀 Fitur
 
-- ✅ Support deployment dari **folder** atau **file .zip**
+- ✅ Support deployment dari **folder**, **file .zip**, atau **Git repository**
+- ✅ Otomatis **git clone** dari GitHub/GitLab/Bitbucket
 - ✅ Otomatis setup **MySQL** (database & user)
 - ✅ Otomatis install **Composer dependencies**
 - ✅ Otomatis konfigurasi **.env**
@@ -87,32 +88,42 @@ localhost ansible_connection=local
 ### Windows
 
 ```cmd
+# Dari folder lokal
 deploy.bat C:\path\to\laravel-project
-```
 
-Atau dengan file zip:
-
-```cmd
+# Dari file zip
 deploy.bat C:\path\to\project.zip
+
+# Dari Git repository
+deploy.bat https://github.com/username/laravel-app.git
 ```
 
 ### Linux/Mac
 
 ```bash
 chmod +x deploy.sh
+
+# Dari folder lokal
 ./deploy.sh /path/to/laravel-project
-```
 
-Atau dengan file zip:
-
-```bash
+# Dari file zip
 ./deploy.sh /path/to/project.zip
+
+# Dari Git repository
+./deploy.sh https://github.com/username/laravel-app.git
 ```
 
 ### Manual (tanpa script)
 
 ```bash
+# Dari folder/zip
 ansible-playbook -i inventory.ini deploy.yml -e "project_source=/path/to/project" --ask-become-pass
+
+# Dari Git repository
+ansible-playbook -i inventory.ini deploy.yml -e "project_source=https://github.com/username/laravel-app.git" --ask-become-pass
+
+# Dari Git dengan branch tertentu
+ansible-playbook -i inventory.ini deploy.yml -e "project_source=https://github.com/username/laravel-app.git" -e "git_branch=develop" --ask-become-pass
 ```
 
 ## 📁 Struktur Project

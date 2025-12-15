@@ -1,40 +1,63 @@
 ---
-- name: Cek apakah project_source adalah file zip
+- name: Tentukan tipe source (git, zip, atau folder)
+  set_fact:
+    is_git_repo: "{{ project_source.startswith('http://') or project_source.startswith('https://') or project_source.startswith('git@') }}"
+  when: project_source != ""
+
+- name: Cek apakah project_source adalah file zip (jika bukan git)
   stat:
     path: "{{ project_source }}"
   register: source_stat
-  when: project_source != ""
+  when: project_source != "" and not is_git_repo
 
 - name: Tentukan apakah source adalah zip file
   set_fact:
     is_zip_file: "{{ source_stat.stat.exists and project_source.endswith('.zip') }}"
-  when: project_source != ""
+  when: project_source != "" and not is_git_repo
 
-- name: Buat direktori temporary untuk extract
+- name: Hapus direktori lama jika clone dari git (untuk fresh clone)
+  file:
+    path: "{{ deploy_base_path }}/{{ project_name }}"
+    state: absent
+  become: yes
+  when: project_source != "" and is_git_repo and git_force_clone | default(false)
+
+- name: Clone repository dari Git
+  git:
+    repo: "{{ project_source }}"
+    dest: "{{ deploy_base_path }}/{{ project_name }}"
+    version: "{{ git_branch | default('main') }}"
+    force: yes
+    update: yes
+  become: yes
+  when: project_source != "" and is_git_repo
+
+- name: Buat direktori temporary untuk extract zip
   file:
     path: "/tmp/laravel_deploy_temp"
     state: directory
     mode: '0755'
-  when: project_source != "" and is_zip_file
+  when: project_source != "" and not is_git_repo and is_zip_file
 
 - name: Extract file zip ke temporary directory
   unarchive:
     src: "{{ project_source }}"
     dest: "/tmp/laravel_deploy_temp"
     remote_src: no
-  when: project_source != "" and is_zip_file
+  when: project_source != "" and not is_git_repo and is_zip_file
 
 - name: Tentukan source directory untuk copy
   set_fact:
     actual_source: "{{ '/tmp/laravel_deploy_temp' if is_zip_file else project_source }}"
-  when: project_source != ""
+  when: project_source != "" and not is_git_repo
 
-- name: Buat direktori project di destination
+- name: Buat direktori project di destination (untuk non-git)
   file:
     path: "{{ deploy_base_path }}/{{ project_name }}"
     state: directory
     mode: '0755'
   become: yes
+  when: project_source != "" and not is_git_repo
 
 - name: Copy project files ke destination (dari zip)
   synchronize:
@@ -43,7 +66,7 @@
     delete: no
     recursive: yes
   become: yes
-  when: project_source != "" and is_zip_file
+  when: project_source != "" and not is_git_repo and is_zip_file
 
 - name: Copy project files ke destination (dari folder)
   synchronize:
@@ -52,7 +75,7 @@
     delete: no
     recursive: yes
   become: yes
-  when: project_source != "" and not is_zip_file
+  when: project_source != "" and not is_git_repo and not is_zip_file
 
 - name: Set ownership untuk project directory
   file:
@@ -74,4 +97,13 @@
   file:
     path: "/tmp/laravel_deploy_temp"
     state: absent
-  when: project_source != "" and is_zip_file
+  when: project_source != "" and not is_git_repo and is_zip_file
+
+- name: Tampilkan info sumber deployment
+  debug:
+    msg:
+      - "========================================="
+      - "Source Type: {{ 'Git Repository' if is_git_repo else ('ZIP File' if is_zip_file else 'Folder') }}"
+      - "Source: {{ project_source }}"
+      - "Destination: {{ deploy_base_path }}/{{ project_name }}"
+      - "========================================="

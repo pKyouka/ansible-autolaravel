@@ -12,13 +12,17 @@ if "%~1"=="" (
     echo ============================================
     echo.
     echo Penggunaan:
-    echo   deploy.bat ^<path-to-project^>
+    echo   deploy.bat ^<source^>
     echo.
     echo Contoh:
     echo   deploy.bat C:\laravel-project
     echo   deploy.bat C:\myapp.zip
+    echo   deploy.bat https://github.com/username/laravel-app.git
     echo.
-    echo Project bisa berupa folder atau file .zip
+    echo Source bisa berupa:
+    echo   - Folder lokal
+    echo   - File .zip
+    echo   - Git repository URL
     echo ============================================
     exit /b 1
 )
